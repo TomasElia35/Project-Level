@@ -65,7 +65,6 @@ const UbicacionCard = ({ item, onClick, onEdit, onDelete }) => {
                         <CardMedia
                             component="img" image={item.ultimaImagenUrl} alt={item.nombre}
                             sx={{ objectFit: 'contain', width: '100%', height: '100%', filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }}
-                            onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=Sin+Imagen"; }}
                         />
                     ) : (
                         <Box sx={{ opacity: 0.8, color: esItem ? theme.palette.success.light : theme.palette.warning.light }}>

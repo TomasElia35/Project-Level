@@ -175,7 +175,6 @@ const DetalleModulo = ({ modulo, onBack }) => {
                                                 style={{ width: '100%', height: 120, objectFit: 'contain' }} 
                                                 onError={(e) => {
                                                     e.target.onerror = null; 
-                                                    e.target.src = "https://via.placeholder.com/150?text=Sin+Foto";
                                                 }} 
                                             />
                                         </Box>
