@@ -1,0 +1,20 @@
+CREATE TABLE T_Nivel (
+    Id BIGINT PRIMARY KEY IDENTITY(1,1),
+    Nombre VARCHAR(100) NOT NULL,
+    Tipo VARCHAR(20) NOT NULL CHECK (Tipo IN ('CARPETA', 'ITEM')),
+    PadreId BIGINT NULL,
+    
+    CONSTRAINT FK_Nivel_Padre FOREIGN KEY (PadreId) REFERENCES T_Nivel(Id),
+    CONSTRAINT UQ_Padre_Nombre UNIQUE (PadreId, Nombre)
+);
+
+CREATE TABLE T_Detalle (
+    Id BIGINT PRIMARY KEY IDENTITY(1,1),
+    NivelId BIGINT NOT NULL,
+    ImagenUrl VARCHAR(500) NULL,
+    Observacion NVARCHAR(MAX) NULL,
+    FechaRegistro DATETIME DEFAULT GETDATE(),
+    
+    CONSTRAINT FK_Detalle_Nivel FOREIGN KEY (NivelId) REFERENCES T_Nivel(Id)
+);
+
