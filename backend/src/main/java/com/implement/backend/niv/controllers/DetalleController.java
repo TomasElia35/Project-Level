@@ -15,7 +15,6 @@ import java.util.List;
 @RequestMapping("/api/ubicaciones")
 @CrossOrigin("*")
 public class DetalleController {
-
     @Autowired
     private DetalleService detalleService;
 
@@ -24,7 +23,6 @@ public class DetalleController {
             @PathVariable Long id,
             @RequestParam(value = "archivo", required = false) MultipartFile archivo,
             @RequestParam("observacion") String observacion) {
-
         try {
             detalleService.agregarDetalle(id, archivo, observacion);
             return ResponseEntity.ok().build();

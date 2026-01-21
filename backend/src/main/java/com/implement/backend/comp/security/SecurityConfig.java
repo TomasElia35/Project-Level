@@ -15,25 +15,18 @@ import java.util.List;
 
 @Configuration
 public class SecurityConfig {
-
-    //Para el candado
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. AQUI: Activamos la configuración CORS que definiste abajo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // 2. Desactivamos CSRF
                 .csrf(csrf -> csrf.disable())
-
-                // 3. Permisos
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/imagenes/**").permitAll() // <--- AGREGA ESTO SI FALTA
                         .anyRequest().permitAll()
                 );
 
         return http.build();
     }
-    //Para Encriptar la clave
     @Bean
     public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();

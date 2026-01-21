@@ -9,8 +9,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Mapeamos la URL que guardamos en la BD a la carpeta física
-        registry.addResourceHandler("/Imagenes/Planograma/**")
-                .addResourceLocations("file:C:/GondolaImagenes/");
+        registry.addResourceHandler("/imagenes/videos/Planograma/**")
+                .addResourceLocations("file:////192.168.1.94/Videos/Planograma/");
     }
 }

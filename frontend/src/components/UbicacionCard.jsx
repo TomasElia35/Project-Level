@@ -1,125 +1,105 @@
-// src/components/UbicacionCard.jsx
 import React, { useState } from 'react';
 import { 
     Card, CardActionArea, CardContent, Typography, Box, IconButton, 
-    Menu, MenuItem, ListItemIcon, Chip, Tooltip, useTheme
+    Menu, MenuItem, ListItemIcon, Chip, useTheme
 } from '@mui/material';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen'; // Icono Carpeta
-import Inventory2Icon from '@mui/icons-material/Inventory2'; // Icono Producto/Item
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'; 
+import Inventory2Icon from '@mui/icons-material/Inventory2'; 
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
-const UbicacionCard = ({ item, onClick, onEdit, onDelete }) => {
-    const theme = useTheme();
+const UbicacionCard = ({ item, onClick, onEdit, onDelete, selected }) => {
     const esItem = item.tipo === 'ITEM';
-    
-    // Estado menú
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
+    // Funciones del menú
     const handleMenuClick = (event) => {
+        // Detenemos la propagación por si acaso, aunque ya no estén anidados
         event.stopPropagation(); 
         setAnchorEl(event.currentTarget);
     };
     const handleMenuClose = () => setAnchorEl(null);
-    const handleAction = (action) => { handleMenuClose(); action(item); };
+    const handleAction = (action) => { handleMenuClose(); if(action) action(item); };
 
     return (
         <Card 
-            elevation={0} // Quitamos la sombra por defecto de MUI para poner la nuestra
+            elevation={selected ? 4 : 1}
             sx={{ 
-                height: 160, 
+                height: 140, 
                 width: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                position: 'relative',
+                position: 'relative', // Necesario para el posicionamiento absoluto del menú
                 borderRadius: 3,
                 border: '1px solid',
-                borderColor: 'divider',
-                bgcolor: 'white',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 24px -10px rgba(0, 0, 0, 0.1)',
-                    borderColor: esItem ? 'success.light' : 'primary.light'
-                }
+                borderColor: selected ? 'primary.main' : 'divider',
+                bgcolor: selected ? '#eff6ff' : 'white',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: 2 }
             }}
         >
+            {/* 1. ÁREA CLICKEABLE (Ocupa toda la tarjeta excepto el menú) */}
             <CardActionArea 
                 onClick={() => onClick(item)} 
-                sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', p: 2 }}
+                sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'stretch', 
+                    justifyContent: 'flex-start', 
+                    p: 2 
+                }}
             >
-                {/* Header de la Card: Icono y Menú */}
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    {/* Icono Principal */}
                     <Box sx={{ 
-                        p: 1, 
-                        borderRadius: 2, 
-                        bgcolor: esItem ? '#ecfdf5' : '#eff6ff', // Fondos sutiles (Verde/Azul)
-                        color: esItem ? '#10b981' : '#3b82f6',   // Iconos (Verde/Azul)
-                        display: 'flex' 
+                        p: 1, borderRadius: 2, 
+                        bgcolor: esItem ? '#ecfdf5' : '#eff6ff', 
+                        color: esItem ? '#10b981' : '#3b82f6', display: 'flex' 
                     }}>
                         {esItem ? <Inventory2Icon /> : <FolderOpenIcon />}
                     </Box>
                     
-                    <IconButton size="small" onClick={handleMenuClick} sx={{ color: 'text.secondary' }}>
-                        <MoreVertIcon fontSize="small" />
-                    </IconButton>
+                    {/* Espacio vacío para compensar el botón absoluto y que el texto no se monte */}
+                    <Box sx={{ width: 30 }} />
                 </Box>
 
-                {/* Contenido: Nombre */}
-                <CardContent sx={{ p: 0, width: '100%', flexGrow: 1 }}>
-                    <Typography variant="subtitle1" sx={{ 
-                        fontWeight: 600, 
-                        color: 'text.primary',
-                        lineHeight: 1.2,
-                        mb: 0.5,
-                        display: '-webkit-box', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2
-                    }}>
+                <CardContent sx={{ p: 0, flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="600" noWrap sx={{ mb: 0.5 }}>
                         {item.nombre}
                     </Typography>
-
-                    {/* Chip sutil para identificar tipo */}
                     <Chip 
-                        label={esItem ? 'Producto' : 'Carpeta'} 
+                        label={esItem ? 'Producto' : 'Nivel'} 
                         size="small" 
-                        sx={{ 
-                            height: 20, 
-                            fontSize: '0.65rem', 
-                            bgcolor: 'transparent',
-                            color: 'text.secondary',
-                            border: '1px solid',
-                            borderColor: 'divider'
-                        }} 
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.65rem', borderColor: 'divider' }} 
                     />
                 </CardContent>
-
-                {/* Footer: Indicador de observación si existe */}
-                {esItem && item.ultimaObservacion && (
-                     <Typography variant="caption" sx={{ 
-                        color: 'text.secondary', 
-                        fontSize: '0.7rem',
-                        mt: 'auto',
-                        fontStyle: 'italic',
-                        display: 'block',
-                        maxWidth: '100%',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                     }}>
-                        Obs: {item.ultimaObservacion}
-                     </Typography>
-                )}
             </CardActionArea>
 
-            {/* Menú Flotante */}
-            <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose} PaperProps={{ sx: { borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}>
-                <MenuItem onClick={() => handleAction(onEdit)}>
-                    <ListItemIcon><EditOutlinedIcon fontSize="small" /></ListItemIcon> Renombrar
-                </MenuItem>
-                <MenuItem onClick={() => handleAction(onDelete)} sx={{ color: 'error.main' }}>
-                    <ListItemIcon><DeleteOutlineIcon fontSize="small" color="error" /></ListItemIcon> Eliminar
-                </MenuItem>
+            {/* 2. BOTÓN DE MENÚ (ABSOLUTO - Fuera del click principal) */}
+            {(onEdit || onDelete) && (
+                <IconButton 
+                    size="small" 
+                    onClick={handleMenuClick} 
+                    sx={{ 
+                        position: 'absolute', 
+                        top: 12, 
+                        right: 12, 
+                        color: 'text.secondary',
+                        zIndex: 10, // Asegura que quede encima
+                        bgcolor: 'rgba(255,255,255,0.5)',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' }
+                    }}
+                >
+                    <MoreVertIcon fontSize="small" />
+                </IconButton>
+            )}
+
+            {/* Menú Desplegable */}
+            <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose} PaperProps={{ sx: { borderRadius: 2 } }}>
+                <MenuItem onClick={() => handleAction(onEdit)}><ListItemIcon><EditOutlinedIcon fontSize="small" /></ListItemIcon> Renombrar</MenuItem>
+                <MenuItem onClick={() => handleAction(onDelete)} sx={{ color: 'error.main' }}><ListItemIcon><DeleteOutlineIcon fontSize="small" color="error" /></ListItemIcon> Eliminar</MenuItem>
             </Menu>
         </Card>
     );
