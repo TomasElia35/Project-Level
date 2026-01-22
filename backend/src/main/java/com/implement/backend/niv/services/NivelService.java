@@ -97,10 +97,20 @@ public class NivelService {
     /*
      ELIMINAR: Borrar todo el nivel. Si no existe, lanza excepción.
     */
+    @Transactional
     public void eliminar(Long id) {
         if (!nivelRepository.existsById(id)) {
             throw new IllegalArgumentException("No se puede eliminar. El nivel con id " + id + " no existe.");
         }
+
+        // 1. PRIMERO: Eliminamos los detalles (fotos/obs) asociados a este nivel
+        // Esto evita el error de Constraint FK_Detalle_Nivel
+        List<Detalle> detalles = detalleRepository.findByNivelIdOrderByFechaRegistroDesc(id);
+        if (!detalles.isEmpty()) {
+            detalleRepository.deleteAll(detalles);
+        }
+
+        // 2. LUEGO: Eliminamos el nivel (Ahora sí nos dejará la BD)
         nivelRepository.deleteById(id);
     }
 
