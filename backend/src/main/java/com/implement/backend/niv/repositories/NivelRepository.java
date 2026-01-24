@@ -10,4 +10,5 @@ import java.util.List;
 public interface NivelRepository extends JpaRepository<Nivel, Long> {
     List<Nivel> findByPadreIsNull();
     List<Nivel> findByPadreId(Long padreId);
+    long countByPadreId(Long padreId);
 }

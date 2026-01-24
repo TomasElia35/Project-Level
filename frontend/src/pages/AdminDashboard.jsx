@@ -6,10 +6,10 @@ import Header from '../components/layout/Header';
 import PanelLista from '../components/dashboard/PanelLista';
 import PanelDetalle from '../components/dashboard/PanelDetalle';
 
-import { 
-    Box, Button, Dialog, DialogTitle, DialogContent, 
-    TextField, DialogActions, FormControl, InputLabel, Select, MenuItem, 
-    Stack, Snackbar, Alert, Divider, Typography
+import {
+    Box, Button, Dialog, DialogTitle, DialogContent,
+    TextField, DialogActions, FormControl, InputLabel, Select, MenuItem,
+    Stack, Snackbar, Alert, Divider, Typography, Switch, FormControlLabel
 } from '@mui/material';
 
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -30,15 +30,15 @@ const modernTheme = createTheme({
 const AdminDashboard = () => {
     const { logout, user } = useAuth();
 
-    const [ruta, setRuta] = useState([]); 
+    const [ruta, setRuta] = useState([]);
     const [itemsActuales, setItemsActuales] = useState([]);
     const [loading, setLoading] = useState(false);
-    
-    const [panelDerechoOpen, setPanelDerechoOpen] = useState(true); 
-    const [itemSeleccionado, setItemSeleccionado] = useState(null); 
-    const [detalleItem, setDetalleItem] = useState(null); 
+
+    const [panelDerechoOpen, setPanelDerechoOpen] = useState(true);
+    const [itemSeleccionado, setItemSeleccionado] = useState(null);
+    const [detalleItem, setDetalleItem] = useState(null);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
-    
+
     const [openCrear, setOpenCrear] = useState(false);
     const [openEditarNombre, setOpenEditarNombre] = useState(false);
     const [openGestionarEvidencia, setOpenGestionarEvidencia] = useState(false);
@@ -48,7 +48,7 @@ const AdminDashboard = () => {
     const [tipoForm, setTipoForm] = useState("CARPETA");
     const [itemAEditar, setItemAEditar] = useState(null);
     const [busqueda, setBusqueda] = useState("");
-    
+
     const [archivoSeleccionado, setArchivoSeleccionado] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
     const [nuevaObs, setNuevaObs] = useState('');
@@ -58,6 +58,10 @@ const AdminDashboard = () => {
     const closeToast = () => setToast({ ...toast, open: false });
 
     const padreActual = ruta.length > 0 ? ruta[ruta.length - 1] : null;
+
+    const [tieneRestriccion, setTieneRestriccion] = useState(false);
+    const [cantidadMaxima, setCantidadMaxima] = useState("");
+
 
     const cargarUbicaciones = useCallback(async () => {
         setLoading(true);
@@ -78,7 +82,7 @@ const AdminDashboard = () => {
             setDetalleItem(null);
         } else {
             setItemSeleccionado(item);
-            setPanelDerechoOpen(true); 
+            setPanelDerechoOpen(true);
             cargarDetalleItem(item.id);
         }
     };
@@ -94,7 +98,7 @@ const AdminDashboard = () => {
                 setDetalleItem(null);
                 setNuevaObs("");
             }
-        } catch (error) { console.error(error); } 
+        } catch (error) { console.error(error); }
         finally { setLoadingDetalle(false); }
     };
 
@@ -105,65 +109,80 @@ const AdminDashboard = () => {
         setDetalleItem(null);
     };
 
-    const handleGuardarCrear = async () => { 
+    const handleGuardarCrear = async () => {
         if (!nombreForm.trim()) return showToast("Nombre requerido", "warning");
-        try { 
-            await UbicacionService.crear(nombreForm, padreActual?.id, tipoForm); 
-            setOpenCrear(false); cargarUbicaciones(); showToast("Creado correctamente");
-        } catch (e) { showToast("Error al crear", "error"); }
+        if (tieneRestriccion && !cantidadMaxima) {
+            return showToast("Debes ingresar una cantidad máxima", "warning");
+        }
+        try {
+            await UbicacionService.crear(
+                nombreForm,
+                padreActual?.id,
+                tipoForm,
+                tieneRestriccion,
+                tieneRestriccion ? parseInt(cantidadMaxima) : null
+            );
+
+            setOpenCrear(false);
+            cargarUbicaciones();
+            showToast("Creado correctamente");
+        } catch (e) {
+            const msg = e.response?.data?.message || "Error al crear";
+            showToast(msg, "error");
+        }
     };
 
-    const handleGuardarEditarNombre = async () => { 
+    const handleGuardarEditarNombre = async () => {
         if (!itemAEditar || !nombreForm.trim()) return;
-        try { 
-            await UbicacionService.actualizar(itemAEditar.id, nombreForm); 
+        try {
+            await UbicacionService.actualizar(itemAEditar.id, nombreForm);
             setOpenEditarNombre(false); cargarUbicaciones(); showToast("Nombre actualizado");
         } catch (e) { showToast("Error al actualizar", "error"); }
     };
 
-    const handleEliminar = async (item) => { 
-        if(!window.confirm(`¿Eliminar ${item.nombre}?`)) return;
-        try { 
-            await UbicacionService.eliminar(item.id); 
-            cargarUbicaciones(); 
-            if(itemSeleccionado?.id === item.id) { setItemSeleccionado(null); }
+    const handleEliminar = async (item) => {
+        if (!window.confirm(`¿Eliminar ${item.nombre}?`)) return;
+        try {
+            await UbicacionService.eliminar(item.id);
+            cargarUbicaciones();
+            if (itemSeleccionado?.id === item.id) { setItemSeleccionado(null); }
             showToast("Eliminado");
-        } catch(e) { showToast("Error al eliminar", "error"); }
+        } catch (e) { showToast("Error al eliminar", "error"); }
     };
 
     const handleGuardarImagen = async () => {
-        if(!itemSeleccionado) return;
-        if(!archivoSeleccionado) return showToast("Debes seleccionar una imagen", "warning");
+        if (!itemSeleccionado) return;
+        if (!archivoSeleccionado) return showToast("Debes seleccionar una imagen", "warning");
 
-        try{
+        try {
             // Enviamos la imagen Y la observación actual (para no borrar el texto si el backend lo pide)
             await UbicacionService.agregarDetalle(itemSeleccionado.id, archivoSeleccionado, nuevaObs);
-            
-            setArchivoSeleccionado(null); 
+
+            setArchivoSeleccionado(null);
             setPreviewUrl('');
-            cargarDetalleItem(itemSeleccionado.id); 
+            cargarDetalleItem(itemSeleccionado.id);
             showToast("Imagen actualizada");
-        } catch(e) {
+        } catch (e) {
             showToast("Error al guardar imagen", "error");
         }
     }
 
     const handleGuardarObservacion = async () => {
-        if(!itemSeleccionado) return;
-        
-        // Validación: Si el texto es igual al que ya estaba, no hacemos nada
-        if(detalleItem?.observacion === nuevaObs && !nuevaObs) return showToast("No hay cambios en la observación", "info");
+        if (!itemSeleccionado) return;
 
-        try{
+        // Validación: Si el texto es igual al que ya estaba, no hacemos nada
+        if (detalleItem?.observacion === nuevaObs && !nuevaObs) return showToast("No hay cambios en la observación", "info");
+
+        try {
             // CORRECCIÓN IMPORTANTE:
             // Enviamos 'undefined' en lugar de 'null'.
             // Si tu backend borra la imagen al recibir undefined, revisa tu UbicacionService.js
             // El servicio NO debe hacer formData.append('file', ...) si el archivo es undefined/null.
             await UbicacionService.agregarDetalle(itemSeleccionado.id, undefined, nuevaObs);
-            
-            cargarDetalleItem(itemSeleccionado.id); 
+
+            cargarDetalleItem(itemSeleccionado.id);
             showToast("Observación actualizada");
-        } catch(e) {
+        } catch (e) {
             showToast("Error al guardar observación", "error");
         }
     }
@@ -178,7 +197,7 @@ const AdminDashboard = () => {
     const handleNavegar = (direccion) => {
         if (!itemSeleccionado) return;
         const indexActual = itemsFiltrados.findIndex(i => i.id === itemSeleccionado.id);
-        if (indexActual === -1) return; 
+        if (indexActual === -1) return;
 
         let nuevoIndex = indexActual;
         if (direccion === 'anterior') {
@@ -189,7 +208,7 @@ const AdminDashboard = () => {
 
         if (nuevoIndex >= 0 && nuevoIndex < itemsFiltrados.length) {
             const nuevoItem = itemsFiltrados[nuevoIndex];
-            
+
             setItemSeleccionado(nuevoItem);
             cargarDetalleItem(nuevoItem.id);
         }
@@ -202,31 +221,31 @@ const AdminDashboard = () => {
     return (
         <ThemeProvider theme={modernTheme}>
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default', overflow: 'hidden' }}>
-                
+
                 <Header usuario={user?.username} rolLabel="ADMINISTRADOR" onLogout={logout} />
 
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexGrow: 1, overflow: 'hidden' }}>
-                    
-                    <PanelLista 
+
+                    <PanelLista
                         ruta={ruta} items={itemsFiltrados} loading={loading} busqueda={busqueda}
                         setBusqueda={setBusqueda}
                         onBreadcrumb={handleBreadcrumbClick}
                         onItemClick={handleItemClick}
-                        onCrear={() => { setNombreForm(""); setTipoForm("CARPETA"); setOpenCrear(true); }}
+                        onCrear={() => {setNombreForm("");setTipoForm("CARPETA");setTieneRestriccion(false);setCantidadMaxima("");setOpenCrear(true); }}
                         onEditar={(i) => { setItemAEditar(i); setNombreForm(i.nombre); setOpenEditarNombre(true); }}
                         onEliminar={handleEliminar}
                         isOpen={panelDerechoOpen}
                         onToggle={() => setPanelDerechoOpen(!panelDerechoOpen)}
                     />
 
-                    <Box sx={{ 
-                        flex: 1, 
+                    <Box sx={{
+                        flex: 1,
                         display: { xs: itemSeleccionado ? 'flex' : (panelDerechoOpen ? 'none' : 'flex'), md: 'flex' },
                         flexDirection: 'column', bgcolor: '#f1f5f9', overflow: 'hidden',
                         borderBottom: { xs: '1px solid #ddd', md: 'none' },
-                        order: { xs: 1, md: 2 } 
+                        order: { xs: 1, md: 2 }
                     }}>
-                        <PanelDetalle 
+                        <PanelDetalle
                             itemSeleccionado={itemSeleccionado}
                             detalleItem={detalleItem}
                             loadingDetalle={loadingDetalle}
@@ -242,14 +261,60 @@ const AdminDashboard = () => {
 
                 </Box>
             </Box>
-
-            <Dialog open={openCrear} onClose={() => setOpenCrear(false)} fullWidth maxWidth="xs">
+<Dialog open={openCrear} onClose={() => setOpenCrear(false)} fullWidth maxWidth="xs">
                 <DialogTitle>Nuevo Elemento</DialogTitle>
                 <DialogContent>
-                    <TextField autoFocus margin="dense" label="Nombre" fullWidth value={nombreForm} onChange={(e) => setNombreForm(e.target.value)} />
-                    <FormControl fullWidth margin="dense"><InputLabel>Tipo</InputLabel><Select value={tipoForm} onChange={(e) => setTipoForm(e.target.value)} label="Tipo"><MenuItem value="CARPETA">Carpeta</MenuItem><MenuItem value="ITEM">Producto</MenuItem></Select></FormControl>
+                    <TextField 
+                        autoFocus margin="dense" label="Nombre" fullWidth 
+                        value={nombreForm} onChange={(e) => setNombreForm(e.target.value)} 
+                    />
+                    
+                    <FormControl fullWidth margin="dense" sx={{ mb: 2 }}>
+                        <InputLabel>Tipo</InputLabel>
+                        <Select 
+                            value={tipoForm} 
+                            onChange={(e) => setTipoForm(e.target.value)} 
+                            label="Tipo"
+                        >
+                            <MenuItem value="CARPETA">Carpeta</MenuItem>
+                            <MenuItem value="ITEM">Producto</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    {/* --- LÓGICA DE RESTRICCIÓN (Solo visible para Carpetas) --- */}
+                    {tipoForm === 'CARPETA' && (
+                        <Box sx={{ mt: 1, p: 2, border: '1px dashed #ccc', borderRadius: 2, bgcolor: '#fafafa' }}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={tieneRestriccion}
+                                        onChange={(e) => setTieneRestriccion(e.target.checked)}
+                                    />
+                                }
+                                label="¿Limitar capacidad?"
+                            />
+                            
+                            {tieneRestriccion && (
+                                <TextField
+                                    margin="dense"
+                                    label="Cantidad Máxima de Ítems"
+                                    type="number"
+                                    fullWidth
+                                    size="small"
+                                    value={cantidadMaxima}
+                                    onChange={(e) => setCantidadMaxima(e.target.value)}
+                                    helperText="Límite de hijos directos permitidos"
+                                />
+                            )}
+                        </Box>
+                    )}
+                    {/* ------------------------------------------------------- */}
+
                 </DialogContent>
-                <DialogActions><Button onClick={() => setOpenCrear(false)}>Cancelar</Button><Button variant="contained" onClick={handleGuardarCrear}>Crear</Button></DialogActions>
+                <DialogActions>
+                    <Button onClick={() => setOpenCrear(false)}>Cancelar</Button>
+                    <Button variant="contained" onClick={handleGuardarCrear}>Crear</Button>
+                </DialogActions>
             </Dialog>
 
             <Dialog open={openEditarNombre} onClose={() => setOpenEditarNombre(false)} fullWidth maxWidth="xs">
@@ -262,7 +327,7 @@ const AdminDashboard = () => {
                 <DialogTitle>Actualizar Evidencia</DialogTitle>
                 <DialogContent dividers>
                     <Stack spacing={3} py={1}>
-                        
+
                         {/* SECCIÓN IMAGEN */}
                         <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
                             <Typography variant="subtitle2" color="primary" gutterBottom>1. Imagen</Typography>
@@ -279,10 +344,10 @@ const AdminDashboard = () => {
                                     <img src={previewUrl || detalleItem.imagenUrl} style={{ height: '100%', objectFit: 'contain' }} alt="Evidencia" />
                                 </Box>
                             )}
-                            
-                            <Button 
-                                fullWidth 
-                                variant="contained" 
+
+                            <Button
+                                fullWidth
+                                variant="contained"
                                 onClick={handleGuardarImagen}
                                 disabled={!archivoSeleccionado}
                             >
@@ -293,19 +358,19 @@ const AdminDashboard = () => {
                         {/* SECCIÓN OBSERVACIÓN */}
                         <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
                             <Typography variant="subtitle2" color="primary" gutterBottom>2. Observación</Typography>
-                            <TextField 
-                                label="Detalle" 
-                                multiline 
-                                rows={3} 
-                                fullWidth 
-                                value={nuevaObs} 
-                                onChange={(e) => setNuevaObs(e.target.value)} 
+                            <TextField
+                                label="Detalle"
+                                multiline
+                                rows={3}
+                                fullWidth
+                                value={nuevaObs}
+                                onChange={(e) => setNuevaObs(e.target.value)}
                                 sx={{ mb: 2 }}
                             />
-                            
-                            <Button 
-                                fullWidth 
-                                variant="outlined" 
+
+                            <Button
+                                fullWidth
+                                variant="outlined"
                                 onClick={handleGuardarObservacion}
                             >
                                 Guardar Solo Texto

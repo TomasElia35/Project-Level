@@ -12,8 +12,8 @@ export const UbicacionService = {
     },
 
     // Crear: Recibe el tipo (CARPETA o ITEM)
-    crear: (nombre, padreId, tipo) => {
-        return api.post('', { nombre, padreId, tipo });
+    crear: (nombre, padreId, tipo, tieneRestriccion, cantidadMaxima) => {
+        return api.post('', { nombre, padreId, tipo, tieneRestriccion, cantidadMaxima });
     },
 
     // Actualizar: Solo cambiamos el nombre

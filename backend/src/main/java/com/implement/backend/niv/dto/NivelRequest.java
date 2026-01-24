@@ -7,4 +7,6 @@ public class NivelRequest {
     private String nombre;
     private Long padreId;
     private String tipo;
+    private Boolean tieneRestriccion;
+    private Integer cantidadMaxima;
 }

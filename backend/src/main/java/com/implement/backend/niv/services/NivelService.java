@@ -64,23 +64,64 @@ public class NivelService {
     }
 
     /*
-    CREAR: Validamos que no sea un item, ya que si lo es no puede tener cosas que hereden de esta y si el padre no existe tampoco funciona
+    CREAR: Validamos restricciones de padre y guardamos configuración propia
     */
     @Transactional
-    public Nivel crear(String nombre, Long padreId, String tipo){
+    // Nota: Cambié los argumentos para recibir el DTO completo o agrego los nuevos parametros.
+    // Para no romper tu controller, lo ideal es pasar el REQUEST completo o los nuevos args.
+    // Aquí asumo que modificas la llamada para usar los datos nuevos.
+    public Nivel crear(String nombre, Long padreId, String tipo, Boolean tieneRestriccion, Integer cantidadMaxima){
         Nivel nuevo = new Nivel();
         nuevo.setNombre(nombre);
         nuevo.setTipo(tipo);
-        if(padreId!=null){
+
+        // --- LÓGICA DE VALIDACIÓN DEL PADRE (Restricción de llenado) ---
+        if(padreId != null){
             Nivel padre = nivelRepository.findById(padreId)
                     .orElseThrow(() -> new IllegalArgumentException("Nivel padre no encontrado con id: " + padreId));
+
             if ("ITEM".equalsIgnoreCase(padre.getTipo())){
                 throw new IllegalArgumentException("No se puede agregar un nivel hijo a un nivel de tipo ITEM");
             }
+
+            // AQUI VERIFICAMOS LA RESTRICCIÓN DEL PADRE
+            if (Boolean.TRUE.equals(padre.getTieneRestriccion())) {
+                // Contamos cuántos hijos tiene el padre actualmente
+                long cantidadActual = nivelRepository.countByPadreId(padreId);
+
+                // Si la cantidad actual ya alcanzó (o superó) el máximo, error.
+                // Nota: Usamos 0 si cantidadMaxima es null para evitar NullPointerException
+                int maximoPermitido = (padre.getCantidadMaxima() != null) ? padre.getCantidadMaxima() : 0;
+
+                if (cantidadActual >= maximoPermitido) {
+                    throw new IllegalArgumentException("No se puede agregar más ítems. La carpeta '"
+                            + padre.getNombre() + "' ha alcanzado su límite de " + maximoPermitido + " elementos.");
+                }
+            }
+
             nuevo.setPadre(padre);
-        }else {
+        } else {
             nuevo.setPadre(null);
         }
+
+        // --- LÓGICA DE CONFIGURACIÓN PROPIA (Si soy carpeta con restricción) ---
+        if ("CARPETA".equalsIgnoreCase(tipo)) {
+            // Guardamos si esta carpeta tendrá restricción para sus futuros hijos
+            nuevo.setTieneRestriccion(Boolean.TRUE.equals(tieneRestriccion));
+            if (Boolean.TRUE.equals(tieneRestriccion)) {
+                if (cantidadMaxima == null || cantidadMaxima < 0) {
+                    throw new IllegalArgumentException("Si habilita la restricción, debe ingresar una cantidad máxima válida.");
+                }
+                nuevo.setCantidadMaxima(cantidadMaxima);
+            } else {
+                nuevo.setCantidadMaxima(null);
+            }
+        } else {
+            // Los items no restringen nada porque no tienen hijos
+            nuevo.setTieneRestriccion(false);
+            nuevo.setCantidadMaxima(null);
+        }
+
         return nivelRepository.save(nuevo);
     }
 

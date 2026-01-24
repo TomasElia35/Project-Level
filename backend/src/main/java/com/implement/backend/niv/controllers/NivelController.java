@@ -24,7 +24,7 @@ public class NivelController {
 
     @PostMapping
     public ResponseEntity<Nivel> crear(@RequestBody NivelRequest request) {
-        Nivel creado = nivelService.crear(request.getNombre(), request.getPadreId(), request.getTipo());
+        Nivel creado = nivelService.crear(request.getNombre(), request.getPadreId(), request.getTipo(), request.getTieneRestriccion(), request.getCantidadMaxima());
         return ResponseEntity.ok(creado);
     }
 

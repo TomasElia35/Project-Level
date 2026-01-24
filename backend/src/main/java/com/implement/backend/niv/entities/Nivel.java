@@ -19,6 +19,13 @@ public class Nivel {
     private String nombre;
     @Column(name = "Tipo")
     private String tipo;
+
+    @Column(name = "TieneRestriccion")
+    private Boolean tieneRestriccion = false;
+
+    @Column(name = "CantidadMaxima")
+    private Integer cantidadMaxima;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PadreId")
     @JsonIgnore
