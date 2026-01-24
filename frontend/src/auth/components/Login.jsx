@@ -52,7 +52,7 @@ return (
                     </Button>
                 </form>
                 <Typography variant="caption" display="block" align="center" sx={{ mt: 2, color: 'text.secondary' }}>
-                    Prueba: admin/1234 o user/1234
+                    Prueba: admin/admin o user/user
                 </Typography>
             </Paper>
         </Box>

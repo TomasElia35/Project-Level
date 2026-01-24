@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 import java.util.List;
+import java.time.LocalDateTime; // Asegúrate de tener fecha si usas historial
 
 @Service
 public class DetalleService {
@@ -33,11 +34,8 @@ public class DetalleService {
         String rutaFinalParaBD = null;
 
         if (archivo != null && !archivo.isEmpty()) {
-            // CAMBIO CLAVE: Usar la carpeta del usuario en lugar de C:/ directo
-            // Esto apunta a: C:\Users\Tomas Elia\GondolaImagenes
-            //String userHome = System.getProperty("user.home");
-            String carpetaFisica = "\\\\\\\\192.168.1.94\\\\Videos\\\\Planograma";
 
+            String carpetaFisica = "\\\\\\\\192.168.1.94\\\\Videos\\\\Planograma";
             Path pathCarpeta = Paths.get(carpetaFisica);
 
             if (!Files.exists(pathCarpeta)) {
@@ -49,15 +47,20 @@ public class DetalleService {
 
             Files.copy(archivo.getInputStream(), rutaCompleta);
 
-            // La URL sigue igual para que el navegador la pida
             rutaFinalParaBD = "https://portal.hergo.com.ar:8099/imagenes/videos/Planograma/" + nombreArchivo;
+
+        } else {
+            List<Detalle> historialPrevio = detalleRepository.findByNivelIdOrderByFechaRegistroDesc(nivelId);
+
+            if (historialPrevio != null && !historialPrevio.isEmpty()) {
+                rutaFinalParaBD = historialPrevio.get(0).getImagenUrl();
+            }
         }
 
         Detalle detalle = new Detalle();
         detalle.setNivel(nivel);
-        detalle.setImagenUrl(rutaFinalParaBD); // Se guarda: https://portal.hergo...
+        detalle.setImagenUrl(rutaFinalParaBD);
         detalle.setObservacion(observacion);
-
         detalleRepository.save(detalle);
     }
 

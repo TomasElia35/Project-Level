@@ -1,32 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { UbicacionService } from '../services/api'; // Ajusta la ruta si es necesario
-import UbicacionCard from '../components/UbicacionCard';
-import { useAuth } from '../auth/context/AuthContext'; // Para el botón de salir
+import { UbicacionService } from '../services/api';
+import { useAuth } from '../auth/context/AuthContext';
+import Header from '../components/layout/Header';
+import PanelLista from '../components/dashboard/PanelLista';
+import PanelDetalle from '../components/dashboard/PanelDetalle';
 
 import { 
-    Typography, Breadcrumbs, Link, Box, 
-    Button, CircularProgress, Grid, Dialog, DialogTitle, DialogContent, 
+    Box, Button, Dialog, DialogTitle, DialogContent, 
     TextField, DialogActions, FormControl, InputLabel, Select, MenuItem, 
-    IconButton, InputAdornment, Stack, Chip, Fade, Paper, Switch, FormControlLabel,
-    Snackbar, Alert, AppBar, Toolbar
+    Stack, Snackbar, Alert, Divider, Typography
 } from '@mui/material';
 
-// Iconos
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import SearchIcon from '@mui/icons-material/Search';
-import HomeIcon from '@mui/icons-material/Home';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'; 
-import LogoutIcon from '@mui/icons-material/Logout';
+import ImageSearchIcon from '@mui/icons-material/ImageSearch'; // Icono opcional para imagen
+import EditNoteIcon from '@mui/icons-material/EditNote'; // Icono opcional para nota
 
-// Tema
 const modernTheme = createTheme({
     palette: {
         primary: { main: '#3b82f6' },
@@ -38,45 +28,37 @@ const modernTheme = createTheme({
 });
 
 const AdminDashboard = () => {
-    // Auth Hook
     const { logout, user } = useAuth();
 
-    // Estados de Datos
     const [ruta, setRuta] = useState([]); 
     const [itemsActuales, setItemsActuales] = useState([]);
     const [loading, setLoading] = useState(false);
     
-    // UI Panels
     const [panelDerechoOpen, setPanelDerechoOpen] = useState(true); 
     const [itemSeleccionado, setItemSeleccionado] = useState(null); 
     const [detalleItem, setDetalleItem] = useState(null); 
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     
-    // Modales
     const [openCrear, setOpenCrear] = useState(false);
     const [openEditarNombre, setOpenEditarNombre] = useState(false);
     const [openGestionarEvidencia, setOpenGestionarEvidencia] = useState(false);
     const [zoomImagen, setZoomImagen] = useState(null);
 
-    // Formularios
     const [nombreForm, setNombreForm] = useState("");
     const [tipoForm, setTipoForm] = useState("CARPETA");
     const [itemAEditar, setItemAEditar] = useState(null);
     const [busqueda, setBusqueda] = useState("");
     
-    // Evidencia
     const [archivoSeleccionado, setArchivoSeleccionado] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
     const [nuevaObs, setNuevaObs] = useState('');
 
-    // Feedback
     const [toast, setToast] = useState({ open: false, msg: '', type: 'info' });
     const showToast = (msg, type = 'success') => setToast({ open: true, msg, type });
     const closeToast = () => setToast({ ...toast, open: false });
 
     const padreActual = ruta.length > 0 ? ruta[ruta.length - 1] : null;
 
-    // --- CARGA DE DATOS ---
     const cargarUbicaciones = useCallback(async () => {
         setLoading(true);
         try {
@@ -89,7 +71,6 @@ const AdminDashboard = () => {
 
     useEffect(() => { cargarUbicaciones(); }, [cargarUbicaciones]);
 
-    // --- NAVEGACIÓN ---
     const handleItemClick = (item) => {
         if (item.tipo === 'CARPETA') {
             setRuta([...ruta, item]);
@@ -124,7 +105,6 @@ const AdminDashboard = () => {
         setDetalleItem(null);
     };
 
-    // --- ACCIONES CRUD ---
     const handleGuardarCrear = async () => { 
         if (!nombreForm.trim()) return showToast("Nombre requerido", "warning");
         try { 
@@ -151,15 +131,42 @@ const AdminDashboard = () => {
         } catch(e) { showToast("Error al eliminar", "error"); }
     };
 
-    const handleGuardarEvidencia = async () => {
-        if (!itemSeleccionado) return;
-        if (!archivoSeleccionado && !nuevaObs.trim()) return showToast("Falta foto u observación", "warning");
-        try {
+    const handleGuardarImagen = async () => {
+        if(!itemSeleccionado) return;
+        if(!archivoSeleccionado) return showToast("Debes seleccionar una imagen", "warning");
+
+        try{
+            // Enviamos la imagen Y la observación actual (para no borrar el texto si el backend lo pide)
             await UbicacionService.agregarDetalle(itemSeleccionado.id, archivoSeleccionado, nuevaObs);
-            setOpenGestionarEvidencia(false); setArchivoSeleccionado(null); setPreviewUrl('');
-            cargarDetalleItem(itemSeleccionado.id); showToast("Evidencia guardada");
-        } catch (error) { showToast("Error al guardar", "error"); }
-    };
+            
+            setArchivoSeleccionado(null); 
+            setPreviewUrl('');
+            cargarDetalleItem(itemSeleccionado.id); 
+            showToast("Imagen actualizada");
+        } catch(e) {
+            showToast("Error al guardar imagen", "error");
+        }
+    }
+
+    const handleGuardarObservacion = async () => {
+        if(!itemSeleccionado) return;
+        
+        // Validación: Si el texto es igual al que ya estaba, no hacemos nada
+        if(detalleItem?.observacion === nuevaObs && !nuevaObs) return showToast("No hay cambios en la observación", "info");
+
+        try{
+            // CORRECCIÓN IMPORTANTE:
+            // Enviamos 'undefined' en lugar de 'null'.
+            // Si tu backend borra la imagen al recibir undefined, revisa tu UbicacionService.js
+            // El servicio NO debe hacer formData.append('file', ...) si el archivo es undefined/null.
+            await UbicacionService.agregarDetalle(itemSeleccionado.id, undefined, nuevaObs);
+            
+            cargarDetalleItem(itemSeleccionado.id); 
+            showToast("Observación actualizada");
+        } catch(e) {
+            showToast("Error al guardar observación", "error");
+        }
+    }
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -168,107 +175,74 @@ const AdminDashboard = () => {
 
     const itemsFiltrados = itemsActuales.filter(i => i.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
+    const handleNavegar = (direccion) => {
+        if (!itemSeleccionado) return;
+        const indexActual = itemsFiltrados.findIndex(i => i.id === itemSeleccionado.id);
+        if (indexActual === -1) return; 
+
+        let nuevoIndex = indexActual;
+        if (direccion === 'anterior') {
+            nuevoIndex = indexActual - 1;
+        } else {
+            nuevoIndex = indexActual + 1;
+        }
+
+        if (nuevoIndex >= 0 && nuevoIndex < itemsFiltrados.length) {
+            const nuevoItem = itemsFiltrados[nuevoIndex];
+            
+            setItemSeleccionado(nuevoItem);
+            cargarDetalleItem(nuevoItem.id);
+        }
+    };
+
+    const indexActual = itemSeleccionado ? itemsFiltrados.findIndex(i => i.id === itemSeleccionado.id) : -1;
+    const hayAnterior = indexActual > 0;
+    const haySiguiente = indexActual !== -1 && indexActual < itemsFiltrados.length - 1;
+
     return (
         <ThemeProvider theme={modernTheme}>
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default', overflow: 'hidden' }}>
                 
-                {/* HEADER */}
-                <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white', zIndex: 1201 }}>
-                    <Toolbar variant="dense">
-                        <HomeIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6" color="text.primary" sx={{ flexGrow: 1 }}>Portal Hergo</Typography>
-                        
-                        <Stack direction="row" spacing={2} alignItems="center">
-                            <Chip label="ADMINISTRADOR" color="error" size="small" />
-                            <IconButton onClick={logout} color="primary" size="small">
-                                <LogoutIcon />
-                            </IconButton>
-                        </Stack>
-                    </Toolbar>
-                </AppBar>
+                <Header usuario={user?.username} rolLabel="ADMINISTRADOR" onLogout={logout} />
 
-                {/* CONTENEDOR SPLIT */}
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexGrow: 1, overflow: 'hidden' }}>
                     
-                    {/* PANEL IZQUIERDO (LISTA) */}
+                    <PanelLista 
+                        ruta={ruta} items={itemsFiltrados} loading={loading} busqueda={busqueda}
+                        setBusqueda={setBusqueda}
+                        onBreadcrumb={handleBreadcrumbClick}
+                        onItemClick={handleItemClick}
+                        onCrear={() => { setNombreForm(""); setTipoForm("CARPETA"); setOpenCrear(true); }}
+                        onEditar={(i) => { setItemAEditar(i); setNombreForm(i.nombre); setOpenEditarNombre(true); }}
+                        onEliminar={handleEliminar}
+                        isOpen={panelDerechoOpen}
+                        onToggle={() => setPanelDerechoOpen(!panelDerechoOpen)}
+                    />
+
                     <Box sx={{ 
-                        flex: { xs: itemSeleccionado ? 'none' : '1', md: 'none' },
-                        width: { xs: '100%', md: panelDerechoOpen ? '400px' : '100%' },
-                        display: { xs: itemSeleccionado ? 'none' : 'flex', md: 'flex' },
-                        flexDirection: 'column', borderRight: '1px solid #ddd', bgcolor: 'white', position: 'relative',
-                        order: { xs: 2, md: 1 }
+                        flex: 1, 
+                        display: { xs: itemSeleccionado ? 'flex' : (panelDerechoOpen ? 'none' : 'flex'), md: 'flex' },
+                        flexDirection: 'column', bgcolor: '#f1f5f9', overflow: 'hidden',
+                        borderBottom: { xs: '1px solid #ddd', md: 'none' },
+                        order: { xs: 1, md: 2 } 
                     }}>
-                        <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-                            <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 1 }}>
-                                <Link component="button" onClick={() => handleBreadcrumbClick(-1)} underline="hover" color={ruta.length === 0 ? 'primary' : 'inherit'}>Inicio</Link>
-                                {ruta.map((item, index) => <Link key={item.id} component="button" onClick={() => handleBreadcrumbClick(index)} underline="hover" color={index === ruta.length -1 ? 'primary' : 'inherit'}>{item.nombre}</Link>)}
-                            </Breadcrumbs>
-                            <Stack direction="row" spacing={1}>
-                                <TextField size="small" placeholder="Buscar..." fullWidth value={busqueda} onChange={(e) => setBusqueda(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small"/></InputAdornment>) }} />
-                                <Button variant="contained" size="small" startIcon={<AddCircleOutlineIcon />} onClick={() => { setNombreForm(""); setTipoForm("CARPETA"); setOpenCrear(true); }} sx={{ minWidth: '90px' }}>Crear</Button>
-                            </Stack>
-                        </Box>
-                        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#f8fafc' }}>
-                            {loading ? <Box display="flex" justifyContent="center"><CircularProgress /></Box> : (
-                                <Grid container spacing={2}>
-                                    {itemsFiltrados.map((item) => (
-                                        <Grid item xs={12} sm={6} md={12} lg={6} key={item.id}>
-                                            <UbicacionCard 
-                                                item={item} selected={itemSeleccionado?.id === item.id}
-                                                onClick={handleItemClick} 
-                                                onEdit={(i) => { setItemAEditar(i); setNombreForm(i.nombre); setOpenEditarNombre(true); }}
-                                                onDelete={handleEliminar}
-                                            />
-                                        </Grid>
-                                    ))}
-                                </Grid>
-                            )}
-                        </Box>
-                        <Box sx={{ position: 'absolute', top: '50%', right: -15, zIndex: 10, display: { xs: 'none', md: 'block' } }}>
-                            <IconButton onClick={() => setPanelDerechoOpen(!panelDerechoOpen)} sx={{ bgcolor: 'white', border: '1px solid #ddd', boxShadow: 2 }}>
-                                {panelDerechoOpen ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-                            </IconButton>
-                        </Box>
+                        <PanelDetalle 
+                            itemSeleccionado={itemSeleccionado}
+                            detalleItem={detalleItem}
+                            loadingDetalle={loadingDetalle}
+                            onClose={() => setItemSeleccionado(null)}
+                            onEvidencia={() => setOpenGestionarEvidencia(true)}
+                            onZoom={setZoomImagen}
+                            onAnterior={() => handleNavegar('anterior')}
+                            onSiguiente={() => handleNavegar('siguiente')}
+                            hayAnterior={hayAnterior}
+                            haySiguiente={haySiguiente}
+                        />
                     </Box>
 
-                    {/* PANEL DERECHO (DETALLE/MAPA) */}
-                    <Box sx={{ 
-                        flex: { xs: itemSeleccionado ? '1' : 'none', md: '1' },
-                        height: { xs: itemSeleccionado ? '100%' : '250px', md: '100%' },
-                        width: { xs: '100%', md: panelDerechoOpen ? 'auto' : '0' },
-                        display: { xs: 'flex', md: panelDerechoOpen ? 'flex' : 'none' },
-                        flexDirection: 'column', bgcolor: '#f1f5f9', overflow: 'hidden',
-                        order: { xs: 1, md: 2 }, borderBottom: { xs: '1px solid #ddd', md: 'none' }
-                    }}>
-                        {itemSeleccionado ? (
-                            <Box sx={{ p: 4, height: '100%', overflowY: 'auto', bgcolor: '#fff' }}>
-                                <Fade in={true}>
-                                    <Stack spacing={3} maxWidth="800px" mx="auto">
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            <IconButton onClick={() => setItemSeleccionado(null)} sx={{ display: { xs: 'flex', md: 'none' }, border: '1px solid #ddd' }}><ArrowBackIcon /></IconButton>
-                                            <Box flexGrow={1}><Typography variant="h5" fontWeight="bold">{itemSeleccionado.nombre}</Typography></Box>
-                                            <Button variant="contained" color="secondary" size="small" startIcon={<EditIcon />} onClick={() => setOpenGestionarEvidencia(true)}>Evidencia</Button>
-                                        </Box>
-                                        <Paper elevation={0} sx={{ p: 1, border: '1px dashed #ddd', display: 'flex', justifyContent: 'center' }}>
-                                            {loadingDetalle ? <CircularProgress /> : detalleItem?.imagenUrl ? 
-                                                <Box component="img" src={detalleItem.imagenUrl} onClick={() => setZoomImagen(detalleItem.imagenUrl)} sx={{ maxWidth: '100%', maxHeight: '450px', objectFit: 'contain' }} /> 
-                                                : <Stack alignItems="center" p={5} color="text.secondary"><ImageNotSupportedIcon sx={{ fontSize: 60 }} /><Typography>Sin evidencia</Typography></Stack>
-                                            }
-                                        </Paper>
-                                        <Paper sx={{ p: 3, bgcolor: '#f8fafc' }}><Typography variant="body1">{detalleItem?.observacion || "Sin observaciones."}</Typography></Paper>
-                                    </Stack>
-                                </Fade>
-                            </Box>
-                        ) : (
-                            <Box sx={{ flexGrow: 1, height: '100%', width: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#e2e8f0', position: 'relative' }}>
-                                <Box component="img" src="/planograma.jpg" alt="Plano" sx={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
-                            </Box>
-                        )}
-                    </Box>
                 </Box>
             </Box>
 
-            {/* MODALES */}
             <Dialog open={openCrear} onClose={() => setOpenCrear(false)} fullWidth maxWidth="xs">
                 <DialogTitle>Nuevo Elemento</DialogTitle>
                 <DialogContent>
@@ -287,13 +261,62 @@ const AdminDashboard = () => {
             <Dialog open={openGestionarEvidencia} onClose={() => setOpenGestionarEvidencia(false)} fullWidth maxWidth="sm">
                 <DialogTitle>Actualizar Evidencia</DialogTitle>
                 <DialogContent dividers>
-                    <Stack spacing={2} py={1}>
-                        <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />}>{archivoSeleccionado ? "Foto Seleccionada" : "Subir Foto"}<input type="file" hidden accept="image/*" onChange={handleFileChange} /></Button>
-                        {(previewUrl || detalleItem?.imagenUrl) && <Box sx={{ height: 200, display: 'flex', justifyContent: 'center' }}><img src={previewUrl || detalleItem.imagenUrl} style={{ height: '100%', objectFit: 'contain' }} /></Box>}
-                        <TextField label="Observación" multiline rows={3} fullWidth value={nuevaObs} onChange={(e) => setNuevaObs(e.target.value)} />
+                    <Stack spacing={3} py={1}>
+                        
+                        {/* SECCIÓN IMAGEN */}
+                        <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                            <Typography variant="subtitle2" color="primary" gutterBottom>1. Imagen</Typography>
+                            <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+                                <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />}>
+                                    {archivoSeleccionado ? "Cambiar" : "Seleccionar"}
+                                    <input type="file" hidden accept="image/*" onChange={handleFileChange} />
+                                </Button>
+                                {archivoSeleccionado && <Typography variant="caption" color="green">¡Listo para subir!</Typography>}
+                            </Stack>
+
+                            {(previewUrl || detalleItem?.imagenUrl) && (
+                                <Box sx={{ height: 180, display: 'flex', justifyContent: 'center', mb: 2, bgcolor: '#f5f5f5' }}>
+                                    <img src={previewUrl || detalleItem.imagenUrl} style={{ height: '100%', objectFit: 'contain' }} alt="Evidencia" />
+                                </Box>
+                            )}
+                            
+                            <Button 
+                                fullWidth 
+                                variant="contained" 
+                                onClick={handleGuardarImagen}
+                                disabled={!archivoSeleccionado}
+                            >
+                                Guardar Nueva Imagen
+                            </Button>
+                        </Box>
+
+                        {/* SECCIÓN OBSERVACIÓN */}
+                        <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                            <Typography variant="subtitle2" color="primary" gutterBottom>2. Observación</Typography>
+                            <TextField 
+                                label="Detalle" 
+                                multiline 
+                                rows={3} 
+                                fullWidth 
+                                value={nuevaObs} 
+                                onChange={(e) => setNuevaObs(e.target.value)} 
+                                sx={{ mb: 2 }}
+                            />
+                            
+                            <Button 
+                                fullWidth 
+                                variant="outlined" 
+                                onClick={handleGuardarObservacion}
+                            >
+                                Guardar Solo Texto
+                            </Button>
+                        </Box>
+
                     </Stack>
                 </DialogContent>
-                <DialogActions><Button onClick={() => setOpenGestionarEvidencia(false)}>Cancelar</Button><Button onClick={handleGuardarEvidencia} variant="contained" startIcon={<SaveIcon />}>Guardar</Button></DialogActions>
+                <DialogActions>
+                    <Button onClick={() => setOpenGestionarEvidencia(false)} color="secondary">Cerrar</Button>
+                </DialogActions>
             </Dialog>
 
             <Snackbar open={toast.open} autoHideDuration={4000} onClose={closeToast}><Alert severity={toast.type}>{toast.msg}</Alert></Snackbar>
